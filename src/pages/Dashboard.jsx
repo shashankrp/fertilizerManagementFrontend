@@ -254,6 +254,7 @@ const Dashboard = () => {
               <tr className="border-b border-stone-100">
                 <th className="pb-3 text-[10px] font-black text-stone-400 uppercase">Bill No.</th>
                 <th className="pb-3 text-[10px] font-black text-stone-400 uppercase">Customer</th>
+                <th className="pb-3 text-[10px] font-black text-stone-400 uppercase">Payment</th>
                 <th className="pb-3 text-[10px] font-black text-stone-400 uppercase text-right">Items</th>
                 <th className="pb-3 text-[10px] font-black text-stone-400 uppercase text-right">Total</th>
                 <th className="pb-3 text-[10px] font-black text-stone-400 uppercase text-right">Action</th>
@@ -264,6 +265,15 @@ const Dashboard = () => {
                 <tr key={bill.id} className="hover:bg-stone-50/50 transition-colors">
                   <td className="py-3 text-xs font-bold text-stone-600">#{bill.billNumber}</td>
                   <td className="py-3 text-xs font-bold text-stone-800">{bill.customerInfo?.name || 'Cash Customer'}</td>
+                  <td className="py-3 text-xs">
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                      bill.paymentMethod === 'Credit' 
+                        ? 'bg-rose-50 text-rose-600' 
+                        : 'bg-emerald-50 text-emerald-600'
+                    }`}>
+                      {bill.paymentMethod || 'Cash'}
+                    </span>
+                  </td>
                   <td className="py-3 text-xs text-right text-stone-500">{bill.items?.length || 0} Products</td>
                   <td className="py-3 text-xs font-black text-emerald-700 text-right">Rs. {bill.total.toLocaleString()}</td>
                   <td className="py-3 text-right">

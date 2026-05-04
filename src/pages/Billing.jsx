@@ -60,8 +60,9 @@ const Billing = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { fertilizers, recordSale, updateSale } = useInventory();
+  const { fertilizers, sales, recordSale, updateSale } = useInventory();
   const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', aadhar: '', state: 'Karnataka', stateCode: '29' });
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [cart, setCart] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -73,6 +74,19 @@ const Billing = () => {
   
   const summaryRef = useRef(null);
 
+  const getNextBillNumber = () => {
+    if (!sales || sales.length === 0) return '1';
+    
+    const numericBillNumbers = sales
+      .map(s => parseInt(s.billNumber))
+      .filter(n => !isNaN(n));
+    
+    if (numericBillNumbers.length === 0) return '1';
+    
+    const maxBillNum = Math.max(...numericBillNumbers);
+    return (maxBillNum + 1).toString();
+  };
+
   useEffect(() => {
     if (location.state?.editingSale) {
       const sale = location.state.editingSale;
@@ -80,12 +94,15 @@ const Billing = () => {
       setEditingId(sale.id);
       setBillNumber(sale.billNumber);
       setCustomerInfo(sale.customerInfo || { name: '', phone: '', aadhar: '', state: 'Karnataka', stateCode: '29' });
+      setPaymentMethod(sale.paymentMethod || 'Cash');
       setCart(sale.items || []);
+    } else if (sales.length > 0) {
+      setBillNumber(getNextBillNumber());
     } else {
-      // Generate a pseudo-random bill number on load
-      setBillNumber(`${Date.now().toString().slice(-6)}`);
+      // Default to 1 if first ever bill
+      setBillNumber('1');
     }
-  }, [location.state]);
+  }, [location.state, sales]);
 
   const recordTransaction = async () => {
     if (cart.length === 0) return;
@@ -104,6 +121,7 @@ const Billing = () => {
         cgst,
         sgst,
         total,
+        paymentMethod,
         billedBy: isEditing ? (location.state?.editingSale?.billedBy || user?.name) : user?.name,
         billedByEmail: isEditing ? (location.state?.editingSale?.billedByEmail || user?.email) : user?.email
       };
@@ -229,7 +247,8 @@ const Billing = () => {
               }
               setCart([]); 
               setCustomerInfo({name: '', phone: '', aadhar: '', state: 'Karnataka', stateCode: '29'});
-              setBillNumber(`${Date.now().toString().slice(-6)}`);
+              setPaymentMethod('Cash');
+              setBillNumber(getNextBillNumber());
             }}
             className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-700 transition-colors"
           >
@@ -286,6 +305,20 @@ const Billing = () => {
                     maxLength={12}
                     className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm font-mono"
                   />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-stone-500 uppercase">Payment Method</label>
+                <div className="relative">
+                  <Receipt className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <select 
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm appearance-none"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Credit">Credit</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -585,7 +618,8 @@ const Billing = () => {
                       } else {
                         setCart([]);
                         setCustomerInfo({name: '', phone: '', aadhar: '', state: 'Karnataka', stateCode: '29'});
-                        setBillNumber(`${Date.now().toString().slice(-6)}`);
+                        setPaymentMethod('Cash');
+                        setBillNumber(getNextBillNumber());
                         setShowBill(false);
                       }
                     }}
@@ -628,6 +662,15 @@ const Billing = () => {
                       </div>
                       <div className="p-2 h-10">
                         <p className="text-[9px] font-bold text-stone-500 uppercase">Mode/Terms of Payment</p>
+                        <p className="font-bold">
+                          {paymentMethod === 'Cash' ? (
+                            <>
+                              Cash / Digital Payment
+                              <br />
+                              <span className="text-[10px] text-emerald-600 tracking-widest text-xs">PAID</span>
+                            </>
+                          ) : 'Credit'}
+                        </p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2">

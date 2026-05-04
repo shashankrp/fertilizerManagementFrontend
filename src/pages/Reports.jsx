@@ -13,6 +13,7 @@ import {
   Edit
 } from 'lucide-react';
 import Table from '../components/Table';
+import api from '../services/api';
 import { useInventory } from '../context/InventoryContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -32,7 +33,23 @@ const COLORS = ['#065f46', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'];
 
 const Reports = () => {
   const { sales, fertilizers } = useInventory();
+  const [users, setUsers] = React.useState([]);
+  const [loadingUsers, setLoadingUsers] = React.useState(true);
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await api.get('/users');
+        setUsers(data || []);
+      } catch (error) {
+        console.error('Failed to fetch users for report:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const handleEditSale = (sale) => {
     navigate('/billing', { state: { editingSale: sale } });
@@ -60,19 +77,25 @@ const Reports = () => {
   // Aggregate total sales per user
   const salesByUser = useMemo(() => {
     const agg = {};
+    
+    // Initialize with all known users from profiles
+    users.forEach(u => {
+      agg[u.name || u.email] = { user: u.name || u.email, totalQuantity: 0, totalRevenue: 0, billCount: 0 };
+    });
+
     sales.forEach(sale => {
-      const user = sale.billedBy || 'Anonymous';
-      if (!agg[user]) {
-        agg[user] = { user, totalQuantity: 0, totalRevenue: 0, billCount: 0 };
+      const userName = sale.billedBy || 'Anonymous';
+      if (!agg[userName]) {
+        agg[userName] = { user: userName, totalQuantity: 0, totalRevenue: 0, billCount: 0 };
       }
-      agg[user].billCount += 1;
-      agg[user].totalRevenue += sale.total;
+      agg[userName].billCount += 1;
+      agg[userName].totalRevenue += sale.total;
       sale.items.forEach(item => {
-        agg[user].totalQuantity += item.quantity;
+        agg[userName].totalQuantity += item.quantity;
       });
     });
     return Object.values(agg).sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [sales]);
+  }, [sales, users]);
 
   const pieData = useMemo(() => {
     return salesByProduct.map(s => ({ name: s.item, value: s.revenue }));
@@ -92,7 +115,7 @@ const Reports = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `Sri Basaveshwara_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `agrogrow_report_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -102,7 +125,7 @@ const Reports = () => {
   return (
     <div className="space-y-8 report-container">
       <Helmet>
-        <title>Business Reports | Sri Basaveshwara</title>
+        <title>Business Reports | AgroGrow</title>
       </Helmet>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
@@ -215,12 +238,21 @@ const Reports = () => {
           <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Click edit to modify items</p>
         </div>
         <Table 
-          headers={['Bill No.', 'Customer', 'Date', 'Total Amount', 'Actions']}
+          headers={['Bill No.', 'Customer', 'Payment', 'Date', 'Total Amount', 'Actions']}
           data={sales.slice(0, 10)}
           renderRow={(sale) => (
             <>
               <td className="px-4 py-3 font-bold text-stone-600">#{sale.billNumber}</td>
               <td className="px-4 py-3 font-bold text-stone-800">{sale.customerInfo?.name || 'Cash Customer'}</td>
+              <td className="px-4 py-3">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                  sale.paymentMethod === 'Credit' 
+                    ? 'bg-rose-50 text-rose-600' 
+                    : 'bg-emerald-50 text-emerald-600'
+                }`}>
+                  {sale.paymentMethod || 'Cash'}
+                </span>
+              </td>
               <td className="px-4 py-3 text-stone-500">{new Date(sale.timestamp).toLocaleDateString()}</td>
               <td className="px-4 py-3 font-black text-emerald-700">Rs. {sale.total.toLocaleString()}</td>
               <td className="px-4 py-3">

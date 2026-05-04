@@ -26,6 +26,7 @@ export const InventoryProvider = ({ children }) => {
         cgst: sale.cgst,
         sgst: sale.sgst,
         total: sale.total,
+        paymentMethod: sale.payment_method || 'Cash',
         billedBy: sale.billed_by,
         billedByEmail: sale.billed_by_email,
         timestamp: sale.created_at
@@ -57,6 +58,7 @@ export const InventoryProvider = ({ children }) => {
         cgst: billData.cgst,
         sgst: billData.sgst,
         total: billData.total,
+        payment_method: billData.paymentMethod || 'Cash',
         billed_by: billData.billedBy,
         billed_by_email: billData.billedByEmail
       });
@@ -82,6 +84,7 @@ export const InventoryProvider = ({ children }) => {
         cgst: billData.cgst,
         sgst: billData.sgst,
         total: billData.total,
+        payment_method: billData.paymentMethod || 'Cash',
         billed_by: billData.billedBy,
         billed_by_email: billData.billedByEmail
       });
