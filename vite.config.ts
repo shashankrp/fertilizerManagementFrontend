@@ -10,11 +10,11 @@ export default defineConfig(({ mode }) => {
 
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
-
+      base: process.env.VITE_BASE_PATH || '/fertilizerManagementFrontend',
       proxy: {
         // all /api requests go to backend
         '/api': {
-          target: 'http://localhost:3000',
+          target: process.env.VITE_API_URL || 'http://localhost:5000',
           changeOrigin: true,
           secure: false
         }

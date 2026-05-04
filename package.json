@@ -4,13 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --import tsx server.ts",
-    "start": "node server.ts",
-    "build": "vite build",
-    "preview": "vite preview",
-    "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
-  },
+  "dev": "vite",
+  "start": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
+  "clean": "del /f dist",
+  "lint": "tsc --noEmit"
+},
   "dependencies": {
     "@google/genai": "^1.29.0",
     "@supabase/supabase-js": "^2.105.1",
