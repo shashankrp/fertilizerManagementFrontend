@@ -308,13 +308,13 @@ const Billing = () => {
                   <option value="">Choose a product...</option>
                   {fertilizers.map(product => (
                     <option key={product.id} value={product.id} disabled={product.stock <= 0}>
-                      {product.name} (Stock: {product.stock}) - Rs. {product.price}/bag
+                      {product.name} (Stock: {product.stock} {product.unit || 'Bags'}) - Rs. {product.price}/{product.unit || 'bag'}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-stone-500 uppercase">Quantity (Bags)</label>
+                <label className="text-[10px] font-bold text-stone-500 uppercase">Quantity</label>
                 <input 
                   type="number" 
                   min="1"
@@ -348,7 +348,7 @@ const Billing = () => {
                   <thead className="bg-stone-50 border-b border-stone-200">
                     <tr>
                       <th className="px-6 py-3 text-[10px] font-black text-stone-500 uppercase">Product Details</th>
-                      <th className="px-6 py-3 text-[10px] font-black text-stone-500 uppercase text-center">Bags</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-stone-500 uppercase text-center">Qty</th>
                       <th className="px-6 py-3 text-[10px] font-black text-stone-500 uppercase text-right">Rate</th>
                       <th className="px-6 py-3 text-[10px] font-black text-stone-500 uppercase text-right">Total</th>
                       <th className="px-6 py-3 text-[10px] font-black text-stone-500 uppercase text-right w-10"></th>
@@ -366,7 +366,7 @@ const Billing = () => {
                         <tr key={item.id} className="hover:bg-stone-50/50 transition-colors">
                           <td className="px-6 py-4">
                             <p className="text-sm font-bold text-stone-800">{item.name}</p>
-                            <p className="text-[10px] text-stone-500">Size: {item.bagSize || '50kg'}</p>
+                            <p className="text-[10px] text-stone-500">Size: {item.packaging || item.bagSize || 'Standard'}</p>
                           </td>
                           <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center">
@@ -413,7 +413,7 @@ const Billing = () => {
                     <div className="flex-1">
                       <p className="text-sm font-bold text-stone-900">{item.name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold text-stone-400 uppercase">{item.bagSize || '50kg'}</span>
+                        <span className="text-[10px] font-bold text-stone-400 uppercase">{item.packaging || item.bagSize || 'Standard'}</span>
                         <span className="w-1 h-1 bg-stone-300 rounded-full"></span>
                         <div className="flex items-center gap-1">
                           <input 
@@ -423,7 +423,7 @@ const Billing = () => {
                             onChange={(e) => updateItemQuantity(item.id, e.target.value)}
                             className="w-10 px-1 py-0.5 text-center text-xs font-bold text-primary-600 bg-primary-50 border border-primary-100 rounded-md"
                           />
-                          <span className="text-[10px] font-bold text-primary-600">Bags</span>
+                          <span className="text-[10px] font-bold text-primary-600">{item.unit || 'Bags'}</span>
                         </div>
                       </div>
                       <p className="text-xs font-black text-stone-900 mt-2">Rs. {((item.price || item.pricePerBag) * item.quantity).toFixed(2)}</p>
@@ -456,7 +456,7 @@ const Billing = () => {
             <div className="space-y-4 mb-8 relative z-10">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-medium text-stone-400">Total Items</span>
-                <span className="text-sm font-bold">{cart.reduce((a, b) => a + b.quantity, 0)} Bags</span>
+                <span className="text-sm font-bold">{cart.reduce((a, b) => a + b.quantity, 0)} Units</span>
               </div>
               <div className="h-px bg-white/5" />
               <div className="flex justify-between items-center text-xs text-stone-400">
@@ -464,7 +464,7 @@ const Billing = () => {
                 <span className="text-stone-200">Rs. {subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center text-xs text-stone-400">
-                <span>Total Tax (GST)</span>
+                <span>Total Tax (GST 18%)</span>
                 <span className="text-stone-200">+Rs. {(cgst + sgst).toFixed(2)}</span>
               </div>
               <div className="pt-4 mt-2 border-t border-white/10 flex justify-between items-end">
@@ -520,7 +520,7 @@ const Billing = () => {
           </div>
           <div className="text-right">
             <span className="bg-primary-50 text-primary-600 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-              {cart.reduce((a, b) => a + b.quantity, 0)} Bags
+              {cart.reduce((a, b) => a + b.quantity, 0)} Qty
             </span>
           </div>
         </div>
@@ -728,7 +728,7 @@ const Billing = () => {
                       <tr className="border-y border-stone-800 font-black bg-stone-50">
                         <td colSpan="3" className="px-2 py-2 text-right border-r border-stone-800">Total</td>
                         <td className="px-2 py-2 text-center border-r border-stone-800">
-                          {cart.reduce((acc, curr) => acc + curr.quantity, 0)} bags
+                          {cart.reduce((acc, curr) => acc + curr.quantity, 0)} Qty
                         </td>
                         <td colSpan="2" className="px-2 py-2 text-right border-r border-stone-800"></td>
                         <td className="px-2 py-2 text-right text-sm">₹ {total.toFixed(2)}</td>

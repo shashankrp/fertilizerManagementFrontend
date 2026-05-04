@@ -30,7 +30,7 @@ const Stocks = () => {
     if (!fertilizer) return;
 
     if (parseInt(formData.quantity) > fertilizer.stock) {
-      alert(`Insufficient stock. Available: ${fertilizer.stock} bags.`);
+      alert(`Insufficient stock. Available: ${fertilizer.stock} ${fertilizer.unit || 'Bags'}.`);
       return;
     }
 
@@ -45,6 +45,7 @@ const Stocks = () => {
             id: fertilizer.id,
             name: fertilizer.name,
             quantity: parseInt(formData.quantity),
+            unit: fertilizer.unit || 'Bags',
             price: fertilizer.price || 0
           }
         ],
@@ -70,16 +71,20 @@ const Stocks = () => {
 
   // Flatten sales to show movements per item
   const movements = (sales || []).flatMap(sale => 
-    (sale.items || []).map(item => ({
-      id: `${sale.id}-${item.id || Math.random()}`,
-      billNumber: sale.billNumber,
-      fertilizer: item.name,
-      quantity: item.quantity,
-      customer: sale.customerInfo?.name || 'Unknown',
-      date: new Date(sale.timestamp).toLocaleString(),
-      billedBy: sale.billedBy,
-      totalAmount: (item.price || item.pricePerBag || 0) * (item.quantity || 0)
-    }))
+    (sale.items || []).map(item => {
+      const fert = fertilizers.find(f => f.id === item.id || f.name === item.name);
+      return {
+        id: `${sale.id}-${item.id || Math.random()}`,
+        billNumber: sale.billNumber,
+        fertilizer: item.name,
+        quantity: item.quantity,
+        unit: fert?.unit || item.unit || 'Bags',
+        customer: sale.customerInfo?.name || 'Unknown',
+        date: new Date(sale.timestamp).toLocaleString(),
+        billedBy: sale.billedBy,
+        totalAmount: (item.price || item.pricePerBag || 0) * (item.quantity || 0)
+      };
+    })
   );
 
   const filteredData = movements.filter(m => 
@@ -107,7 +112,7 @@ const Stocks = () => {
   return (
     <div className="space-y-6">
       <Helmet>
-        <title>Stocks | Sri Basaveshwara</title>
+        <title>Stocks | AgroGrow</title>
       </Helmet>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -142,8 +147,8 @@ const Stocks = () => {
 
         <div className="flex gap-4 w-full sm:w-auto">
           <div className="flex-1 sm:flex-none p-3 bg-primary-900 border border-primary-800 rounded-2xl shadow-sm min-w-[140px]">
-            <p className="text-[9px] font-black text-primary-400 uppercase tracking-widest leading-none mb-1">Total Moved</p>
-            <p className="text-lg font-black text-white">{totalBags} <span className="text-[10px] font-medium opacity-60">Bags</span></p>
+            <p className="text-[9px] font-black text-primary-400 uppercase tracking-widest leading-none mb-1">Total Items Moved</p>
+            <p className="text-lg font-black text-white">{totalBags} <span className="text-[10px] font-medium opacity-60">Qty</span></p>
           </div>
           <div className="flex-1 sm:flex-none p-3 bg-white border border-stone-200 rounded-2xl shadow-sm min-w-[140px]">
             <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest leading-none mb-1">Gross Value</p>
@@ -161,7 +166,7 @@ const Stocks = () => {
             <>
               <td className="px-4 py-3 font-medium text-stone-500">{item.date}</td>
               <td className="px-4 py-3 font-bold text-stone-800">{item.fertilizer}</td>
-              <td className="px-4 py-3 font-bold text-stone-900">{item.quantity} Bags</td>
+              <td className="px-4 py-3 font-bold text-stone-900">{item.quantity} {item.unit}</td>
               <td className="px-4 py-3">
                 <div className="text-stone-600 font-medium">{item.customer}</div>
               </td>
@@ -196,7 +201,7 @@ const Stocks = () => {
               <div className="flex items-center justify-between py-3 border-y border-stone-50">
                 <div className="flex items-center gap-2 text-xs font-bold text-stone-600">
                   <ClipboardList className="w-3.5 h-3.5 text-primary-500" />
-                  {item.quantity} Bags Distributed
+                  {item.quantity} {item.unit} Distributed
                 </div>
               </div>
 
@@ -261,7 +266,7 @@ const Stocks = () => {
             >
               <option value="">Select a fertilizer...</option>
               {fertilizers.map(f => (
-                <option key={f.id} value={f.id}>{f.name} ({f.stock} bags available)</option>
+                <option key={f.id} value={f.id}>{f.name} ({f.stock} {f.unit || 'bags'} available)</option>
               ))}
             </select>
           </div>
@@ -276,7 +281,7 @@ const Stocks = () => {
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Quantity (Bags)</label>
+            <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Quantity</label>
             <input 
               type="number" 
               className="input-field" 

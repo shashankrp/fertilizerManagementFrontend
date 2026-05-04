@@ -74,7 +74,7 @@ const Fertilizers = () => {
   return (
     <div className="space-y-6">
       <Helmet>
-        <title>Fertilizers | Sri Basaveshwara</title>
+        <title>Fertilizers | AgroGrow</title>
       </Helmet>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -128,7 +128,7 @@ const Fertilizers = () => {
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     item.stock < 50 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
                   }`}>
-                    {item.stock} Bags
+                    {item.stock} {item.unit || 'Bags'}
                   </span>
                 </div>
               </td>
@@ -192,7 +192,7 @@ const Fertilizers = () => {
                   <span className={`text-sm font-black ${
                     item.stock < 50 ? 'text-rose-600' : 'text-emerald-700'
                   }`}>
-                    {item.stock} Bags
+                    {item.stock} {item.unit || 'Bags'}
                   </span>
                 </div>
               </div>
