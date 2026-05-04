@@ -46,6 +46,11 @@ const Users = () => {
     const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     
+    // Self-visibility filter: Hide own account
+    if (u.id === user?.id) {
+      return false;
+    }
+
     // Role visibility filter: Admins cannot see Super Admins
     if (isAdmin && !isSuperAdmin && u.role === 'SUPER_ADMIN') {
       return false;
@@ -136,6 +141,7 @@ const Users = () => {
   }
 
   const visibleUsersForCounts = users.filter(u => {
+    if (u.id === user?.id) return false;
     if (isAdmin && !isSuperAdmin && u.role === 'SUPER_ADMIN') return false;
     return true;
   });
