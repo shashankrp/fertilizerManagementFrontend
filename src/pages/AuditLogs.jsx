@@ -2,18 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { History, Search, Filter, Shield, User, Clock } from 'lucide-react';
 import Table from '../components/Table';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
 const AuditLogs = () => {
+  const { isSuperAdmin, isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [logs, setLogs] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const data = await api.get('/audit-logs');
-      setLogs(data || []);
+      const [logsData, usersData] = await Promise.all([
+        api.get('/audit-logs'),
+        api.get('/users')
+      ]);
+      setLogs(logsData || []);
+      setUsers(usersData || []);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -32,7 +39,16 @@ const AuditLogs = () => {
     return 'bg-stone-100 text-stone-700';
   };
 
-  const filteredLogs = logs.filter(log => 
+  const visibleLogs = logs.filter(log => {
+    // If not super admin, hide logs created by super admins
+    if (isAdmin && !isSuperAdmin) {
+      const actor = users.find(u => u.email === log.user_email);
+      if (actor?.role === 'SUPER_ADMIN' || log.user_email === 'shashankrp2@gmail.com') return false;
+    }
+    return true;
+  });
+
+  const filteredLogs = visibleLogs.filter(log => 
     (log.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (log.action || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (log.details || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -46,10 +62,12 @@ const AuditLogs = () => {
     );
   }
 
+  const securityAlerts = visibleLogs.filter(log => log.action.includes('LOCKED') || log.action.includes('DELETE') || log.details.toLowerCase().includes('failed')).length;
+
   return (
     <div className="space-y-6">
       <Helmet>
-        <title>Audit Logs | Sri Basaveshwara</title>
+        <title>Audit Logs | AgroGrow</title>
       </Helmet>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -69,12 +87,12 @@ const AuditLogs = () => {
         </div>
         <div className="flex gap-4 md:gap-8 relative z-10 shrink-0">
           <div className="text-center">
-            <p className="text-lg md:text-xl font-bold text-emerald-400">{logs.length}</p>
+            <p className="text-lg md:text-xl font-bold text-emerald-400">{visibleLogs.length}</p>
             <p className="text-[9px] md:text-[10px] text-stone-500 uppercase font-bold tracking-tighter">Total Events</p>
           </div>
           <div className="w-px h-10 bg-stone-800"></div>
           <div className="text-center">
-            <p className="text-lg md:text-xl font-bold text-blue-400">0</p>
+            <p className="text-lg md:text-xl font-bold text-blue-400">{securityAlerts}</p>
             <p className="text-[9px] md:text-[10px] text-stone-500 uppercase font-bold tracking-tighter">Security Alerts</p>
           </div>
         </div>
@@ -103,7 +121,7 @@ const AuditLogs = () => {
           headers={['System User', 'Action Type', 'Log Details', 'Timestamp', 'Origin IP']}
           data={filteredLogs}
           renderRow={(item) => (
-            <tr key={item.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
+            <>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-stone-100 flex items-center justify-center">
@@ -128,7 +146,7 @@ const AuditLogs = () => {
                 </div>
               </td>
               <td className="px-4 py-3 font-mono text-[10px] text-stone-400">{item.ip_address}</td>
-            </tr>
+            </>
           )}
         />
       </div>

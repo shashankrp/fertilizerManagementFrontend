@@ -32,7 +32,6 @@ const Users = () => {
     fetchUsers();
   }, []);
 
-  // Guard against undefined status
   const getStatusColor = (status) => {
     switch(status) {
       case 'ACTIVE': return 'bg-emerald-100 text-emerald-700';
@@ -42,11 +41,18 @@ const Users = () => {
     }
   };
 
-  // Guard against undefined name/email
-  const filteredUsers = users.filter(u =>
-    (u?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u?.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    // Search filter
+    const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (u.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Role visibility filter: Admins cannot see Super Admins
+    if (isAdmin && !isSuperAdmin && u.role === 'SUPER_ADMIN') {
+      return false;
+    }
+    
+    return matchesSearch;
+  });
 
   const handleStatusChange = async (userId, newStatus) => {
     const userToMod = users.find(u => u.id === userId);
@@ -129,9 +135,14 @@ const Users = () => {
     );
   }
 
-  const activeCount = users.filter(u => u?.status === 'ACTIVE').length;
-  const pendingCount = users.filter(u => u?.status === 'PENDING_APPROVAL' || u?.status === 'PENDING').length;
-  const lockedCount = users.filter(u => u?.status === 'LOCKED').length;
+  const visibleUsersForCounts = users.filter(u => {
+    if (isAdmin && !isSuperAdmin && u.role === 'SUPER_ADMIN') return false;
+    return true;
+  });
+
+  const activeCount = visibleUsersForCounts.filter(u => u.status === 'ACTIVE').length;
+  const pendingCount = visibleUsersForCounts.filter(u => u.status === 'PENDING_APPROVAL' || u.status === 'PENDING').length;
+  const lockedCount = visibleUsersForCounts.filter(u => u.status === 'LOCKED').length;
 
   return (
     <div className="space-y-6">
@@ -145,7 +156,7 @@ const Users = () => {
           <p className="text-xs text-stone-500">Manage accounts, roles, and access permissions.</p>
         </div>
         {(isSuperAdmin || isAdmin) && (
-          <button
+          <button 
             onClick={() => { setSelectedUser(null); setIsModalOpen(true); }}
             className="btn-primary flex items-center gap-2"
           >
@@ -188,9 +199,9 @@ const Users = () => {
       <div className="flex items-center gap-4 w-full sm:max-w-sm">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
+          <input 
+            type="text" 
+            placeholder="Search by name or email..." 
             className="input-field pl-9 w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -200,277 +211,255 @@ const Users = () => {
 
       {/* Desktop Table */}
       <div className="hidden lg:block">
-        <Table
+        <Table 
           headers={['User', 'Role', 'Status', 'Last Activity', 'Actions']}
           data={filteredUsers}
           className="!overflow-visible"
-          renderRow={(item) => {
-            // Normalize role and status once per row with safe fallbacks
-            const role = item?.role ?? '';
-            const status = item?.status ?? '';
+          renderRow={(item) => (
+            <>
+              <td className="px-4 py-3">
+                <div className="flex flex-col">
+                  <span className="font-bold text-stone-800 text-xs">{item.name}</span>
+                  <span className="text-[10px] text-stone-400">{item.email}</span>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1.5 font-bold text-stone-600">
+                  <Shield className="w-3 h-3" />
+                  <span>{item.role.replace('_', ' ')}</span>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tight ${getStatusColor(item.status)}`}>
+                  {item.status.replace('_', ' ')}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-stone-400 font-medium">
+                {item.last_login ? new Date(item.last_login).toLocaleString() : 'Never'}
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2 relative">
+                  {item.status === 'LOCKED' && (
+                    <button 
+                      onClick={() => handleStatusChange(item.id, 'ACTIVE')}
+                      className="text-xs font-bold text-emerald-600 hover:underline"
+                    >
+                      Unlock
+                    </button>
+                  )}
+                  {item.status === 'PENDING_APPROVAL' && (
+                    <button 
+                      onClick={() => handleStatusChange(item.id, 'ACTIVE')}
+                      className="text-xs font-bold text-primary-600 hover:underline"
+                    >
+                      Approve
+                    </button>
+                  )}
+                  <div className="relative">
+                    <button 
+                      onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                      className={`p-1.5 rounded-lg transition-all ${openMenuId === item.id ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50'}`}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
 
-            return (
-              <>
-                <td className="px-4 py-3">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-stone-800 text-xs">{item.name || '—'}</span>
-                    <span className="text-[10px] text-stone-400">{item.email || '—'}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5 font-bold text-stone-600">
-                    <Shield className="w-3 h-3" />
-                    <span>{role ? role.replace('_', ' ') : 'Unknown'}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-tight ${getStatusColor(status)}`}>
-                    {status ? status.replace('_', ' ') : 'Unknown'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-stone-400 font-medium">
-                  {item.last_login ? new Date(item.last_login).toLocaleString() : 'Never'}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2 relative">
-                    {status === 'LOCKED' && (
-                      <button
-                        onClick={() => handleStatusChange(item.id, 'ACTIVE')}
-                        className="text-xs font-bold text-emerald-600 hover:underline"
-                      >
-                        Unlock
-                      </button>
-                    )}
-                    {status === 'PENDING_APPROVAL' && (
-                      <button
-                        onClick={() => handleStatusChange(item.id, 'ACTIVE')}
-                        className="text-xs font-bold text-primary-600 hover:underline"
-                      >
-                        Approve
-                      </button>
-                    )}
-                    <div className="relative">
-                      <button
-                        onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                        className={`p-1.5 rounded-lg transition-all ${openMenuId === item.id ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50'}`}
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-
-                      <AnimatePresence>
-                        {openMenuId === item.id && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setOpenMenuId(null)}
-                            />
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                              className="absolute right-0 mt-2 w-48 bg-white border border-stone-100 rounded-2xl shadow-xl shadow-stone-200/50 z-20 py-2"
-                            >
-                              <p className="px-4 py-2 text-[9px] font-black text-stone-400 uppercase tracking-widest border-b border-stone-50 mb-1">Actions</p>
-
-                              {role === 'USER' ? (
-                                isSuperAdmin && (
-                                  <button
-                                    onClick={() => handleRoleChange(item.id, 'ADMIN')}
-                                    className="w-full px-4 py-2 text-left text-xs font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                                  >
-                                    <Shield className="w-3.5 h-3.5 text-primary-500" />
-                                    Make Admin
-                                  </button>
-                                )
-                              ) : (
-                                role !== 'SUPER_ADMIN' && isSuperAdmin && (
-                                  <button
-                                    onClick={() => handleRoleChange(item.id, 'USER')}
-                                    className="w-full px-4 py-2 text-left text-xs font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                                  >
-                                    <Shield className="w-3.5 h-3.5 text-stone-400" />
-                                    Remove Admin
-                                  </button>
-                                )
-                              )}
-
-                              {status === 'ACTIVE' ? (
-                                <button
-                                  onClick={() => handleStatusChange(item.id, 'LOCKED')}
-                                  className="w-full px-4 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                    <AnimatePresence>
+                      {openMenuId === item.id && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setOpenMenuId(null)} 
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="absolute right-0 mt-2 w-48 bg-white border border-stone-100 rounded-2xl shadow-xl shadow-stone-200/50 z-20 py-2"
+                          >
+                            <p className="px-4 py-2 text-[9px] font-black text-stone-400 uppercase tracking-widest border-b border-stone-50 mb-1">Actions</p>
+                            
+                            {item.role === 'USER' ? (
+                              isSuperAdmin && (
+                                <button 
+                                  onClick={() => handleRoleChange(item.id, 'ADMIN')}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
                                 >
-                                  <UserX className="w-3.5 h-3.5" />
-                                  Lock Account
+                                  <Shield className="w-3.5 h-3.5 text-primary-500" />
+                                  Make Admin
                                 </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleStatusChange(item.id, 'ACTIVE')}
-                                  className="w-full px-4 py-2 text-left text-xs font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                              )
+                            ) : (
+                              item.role !== 'SUPER_ADMIN' && isSuperAdmin && (
+                                <button 
+                                  onClick={() => handleRoleChange(item.id, 'USER')}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
                                 >
-                                  <UserCheck className="w-3.5 h-3.5" />
-                                  Activate Account
+                                  <Shield className="w-3.5 h-3.5 text-stone-400" />
+                                  Remove Admin
                                 </button>
-                              )}
+                              )
+                            )}
 
-                              {role !== 'SUPER_ADMIN' && (
-                                <button
-                                  onClick={() => handleDelete(item.id)}
-                                  className="w-full px-4 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 border-t border-stone-50 mt-1 pt-3"
-                                >
-                                  Delete User
-                                </button>
-                              )}
-                            </motion.div>
-                          </>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                            {item.status === 'ACTIVE' ? (
+                              <button 
+                                onClick={() => handleStatusChange(item.id, 'LOCKED')}
+                                className="w-full px-4 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                              >
+                                <UserX className="w-3.5 h-3.5" />
+                                Lock Account
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleStatusChange(item.id, 'ACTIVE')}
+                                className="w-full px-4 py-2 text-left text-xs font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                              >
+                                <UserCheck className="w-3.5 h-3.5" />
+                                Activate Account
+                              </button>
+                            )}
+
+                            {item.role !== 'SUPER_ADMIN' && (
+                              <button 
+                                onClick={() => handleDelete(item.id)}
+                                className="w-full px-4 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50 border-t border-stone-50 mt-1 pt-3"
+                              >
+                                Delete User
+                              </button>
+                            )}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
-                </td>
-              </>
-            );
-          }}
+                </div>
+              </td>
+            </>
+          )}
         />
       </div>
 
       {/* Mobile Card List */}
       <div className="lg:hidden space-y-4">
-        {filteredUsers.map((item) => {
-          // Normalize role and status once per card with safe fallbacks
-          const role = item?.role ?? '';
-          const status = item?.status ?? '';
-
-          return (
-            <div key={item.id} className="card p-4 space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-500 font-bold text-xs border border-stone-200 uppercase">
-                    {(item.name || item.email || 'U').split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-stone-900">{item.name || 'User'}</h4>
-                    <p className="text-[10px] text-stone-400 font-medium">{item.email || '—'}</p>
-                  </div>
+        {filteredUsers.map((item) => (
+          <div key={item.id} className="card p-4 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-500 font-bold text-xs border border-stone-200 uppercase">
+                  {(item.name || item.email || 'U').split(' ').map(n => n[0]).join('')}
                 </div>
-                <div className="relative">
-                  <button
-                    onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                    className={`p-2 rounded-xl transition-all ${openMenuId === item.id ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50'}`}
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-
-                  <AnimatePresence>
-                    {openMenuId === item.id && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          onClick={() => setOpenMenuId(null)}
-                        />
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                          className="absolute right-0 mt-2 w-44 bg-white border border-stone-100 rounded-2xl shadow-xl shadow-stone-200/50 z-20 py-2"
-                        >
-                          {role === 'USER' ? (
-                            isSuperAdmin && (
-                              <button
-                                onClick={() => handleRoleChange(item.id, 'ADMIN')}
-                                className="w-full px-4 py-2 text-left text-[11px] font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                              >
-                                <Shield className="w-3.5 h-3.5 text-primary-500" />
-                                Make Admin
-                              </button>
-                            )
-                          ) : (
-                            role !== 'SUPER_ADMIN' && isSuperAdmin && (
-                              <button
-                                onClick={() => handleRoleChange(item.id, 'USER')}
-                                className="w-full px-4 py-2 text-left text-[11px] font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                              >
-                                <Shield className="w-3.5 h-3.5 text-stone-400" />
-                                Remove Admin
-                              </button>
-                            )
-                          )}
-
-                          {status === 'ACTIVE' ? (
-                            <button
-                              onClick={() => handleStatusChange(item.id, 'LOCKED')}
-                              className="w-full px-4 py-2 text-left text-[11px] font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                            >
-                              <UserX className="w-3.5 h-3.5" />
-                              Lock Account
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleStatusChange(item.id, 'ACTIVE')}
-                              className="w-full px-4 py-2 text-left text-[11px] font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
-                            >
-                              <UserCheck className="w-3.5 h-3.5" />
-                              Activate Account
-                            </button>
-                          )}
-
-                          {role !== 'SUPER_ADMIN' && (
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className="w-full px-4 py-2 text-left text-[11px] font-bold text-rose-700 hover:bg-rose-50 border-t border-stone-50 mt-1 pt-2"
-                            >
-                              Delete User
-                            </button>
-                          )}
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
+                <div>
+                  <h4 className="text-sm font-bold text-stone-900">{item.name || 'User'}</h4>
+                  <p className="text-[10px] text-stone-400 font-medium">{item.email}</p>
                 </div>
               </div>
+              <div className="relative">
+                <button 
+                  onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+                  className={`p-2 rounded-xl transition-all ${openMenuId === item.id ? 'bg-stone-100 text-stone-900' : 'text-stone-400 hover:bg-stone-50'}`}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-stone-50 rounded-xl border border-stone-100">
-                  <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest leading-none mb-1.5 font-sans">Role</p>
-                  <div className="flex items-center gap-1.5 font-black text-stone-700 text-[10px] font-sans">
-                    <Shield className="w-3 h-3 text-primary-500" />
-                    {role ? role.replace('_', ' ') : 'Unknown'}
-                  </div>
-                </div>
-                <div className="p-3 bg-stone-50 rounded-xl border border-stone-100">
-                  <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest leading-none mb-1.5 font-sans">Status</p>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter uppercase ${getStatusColor(status)}`}>
-                    {status ? status.replace('_', ' ') : 'Unknown'}
-                  </span>
-                </div>
-              </div>
+                <AnimatePresence>
+                  {openMenuId === item.id && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setOpenMenuId(null)} 
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        className="absolute right-0 mt-2 w-44 bg-white border border-stone-100 rounded-2xl shadow-xl shadow-stone-200/50 z-20 py-2"
+                      >
+                        {item.role === 'USER' ? (
+                          isSuperAdmin && (
+                            <button 
+                              onClick={() => handleRoleChange(item.id, 'ADMIN')}
+                              className="w-full px-4 py-2 text-left text-[11px] font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
+                            >
+                              <Shield className="w-3.5 h-3.5 text-primary-500" />
+                              Make Admin
+                            </button>
+                          )
+                        ) : (
+                          item.role !== 'SUPER_ADMIN' && isSuperAdmin && (
+                            <button 
+                              onClick={() => handleRoleChange(item.id, 'USER')}
+                              className="w-full px-4 py-2 text-left text-[11px] font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
+                            >
+                              <Shield className="w-3.5 h-3.5 text-stone-400" />
+                              Remove Admin
+                            </button>
+                          )
+                        )}
 
-              <div className="flex items-center justify-between px-1">
-                <div className="text-[10px] font-bold text-stone-400 font-sans">
-                  Joined Date: {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
-                </div>
-                <div className="flex items-center gap-2">
-                  {status === 'LOCKED' && (
-                    <button
-                      onClick={() => handleStatusChange(item.id, 'ACTIVE')}
-                      className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg uppercase tracking-tight active:scale-95 transition-all"
-                    >
-                      Unlock User
-                    </button>
+                        {item.status === 'ACTIVE' ? (
+                          <button 
+                            onClick={() => handleStatusChange(item.id, 'LOCKED')}
+                            className="w-full px-4 py-2 text-left text-[11px] font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                          >
+                            <UserX className="w-3.5 h-3.5" />
+                            Lock Account
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleStatusChange(item.id, 'ACTIVE')}
+                            className="w-full px-4 py-2 text-left text-[11px] font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            Activate Account
+                          </button>
+                        )}
+
+                        {item.role !== 'SUPER_ADMIN' && (
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="w-full px-4 py-2 text-left text-[11px] font-bold text-rose-700 hover:bg-rose-50 border-t border-stone-50 mt-1 pt-2"
+                          >
+                            Delete User
+                          </button>
+                        )}
+                      </motion.div>
+                    </>
                   )}
-                  {status === 'PENDING_APPROVAL' && (
-                    <button
-                      onClick={() => handleStatusChange(item.id, 'ACTIVE')}
-                      className="text-[10px] font-black text-primary-600 bg-primary-50 px-3 py-1 rounded-lg uppercase tracking-tight active:scale-95 transition-all"
-                    >
-                      Approve User
-                    </button>
-                  )}
-                </div>
+                </AnimatePresence>
               </div>
             </div>
-          );
-        })}
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest leading-none mb-1.5 font-sans">Role</p>
+                <div className="flex items-center gap-1.5 font-black text-stone-700 text-[10px] font-sans">
+                  <Shield className="w-3 h-3 text-primary-500" />
+                  {item.role.replace('_', ' ')}
+                </div>
+              </div>
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-100">
+                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest leading-none mb-1.5 font-sans">Status</p>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter uppercase ${getStatusColor(item.status)}`}>
+                  {item.status.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between px-1">
+              <div className="text-[10px] font-bold text-stone-400 font-sans">
+                Joined Date: {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
+              </div>
+              <div className="flex items-center gap-2">
+                {item.status === 'LOCKED' && (
+                  <button className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg uppercase tracking-tight active:scale-95 transition-all">Unlock User</button>
+                )}
+                {item.status === 'PENDING_APPROVAL' && (
+                  <button className="text-[10px] font-black text-primary-600 bg-primary-50 px-3 py-1 rounded-lg uppercase tracking-tight active:scale-95 transition-all">Approve User</button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+        
         {filteredUsers.length === 0 && (
           <div className="text-center py-12 card bg-stone-50 border-dashed border-2 border-stone-200">
             <UsersIcon className="w-10 h-10 text-stone-200 mx-auto mb-3" />
@@ -486,8 +475,8 @@ const Users = () => {
         footer={
           <div className="flex gap-2">
             <button onClick={() => setIsModalOpen(false)} className="px-4 py-1.5 text-xs font-bold text-stone-500 hover:bg-stone-100 rounded-md">Cancel</button>
-            <button
-              onClick={handleCreateUser}
+            <button 
+              onClick={handleCreateUser} 
               disabled={isSubmitting}
               className="btn-primary"
             >
@@ -502,37 +491,37 @@ const Users = () => {
           </p>
           <div>
             <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Full Name</label>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="e.g. Angela Martin"
+            <input 
+              type="text" 
+              className="input-field" 
+              placeholder="e.g. Angela Martin" 
               value={newUser.name || ''}
               onChange={(e) => setNewUser({...newUser, name: e.target.value})}
             />
           </div>
           <div>
             <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Work Email</label>
-            <input
-              type="email"
-              className="input-field"
-              placeholder="amartin@agrogrow.com"
+            <input 
+              type="email" 
+              className="input-field" 
+              placeholder="amartin@agrogrow.com" 
               value={newUser.email || ''}
               onChange={(e) => setNewUser({...newUser, email: e.target.value})}
             />
           </div>
           <div>
             <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Initial Password</label>
-            <input
-              type="password"
-              className="input-field"
-              placeholder="Min 6 characters"
+            <input 
+              type="password" 
+              className="input-field" 
+              placeholder="Min 6 characters" 
               value={newUser.password || ''}
               onChange={(e) => setNewUser({...newUser, password: e.target.value})}
             />
           </div>
           <div>
             <label className="block text-[11px] font-bold text-stone-500 uppercase mb-1">Initial Role</label>
-            <select
+            <select 
               className="input-field"
               value={newUser.role}
               onChange={(e) => setNewUser({...newUser, role: e.target.value})}

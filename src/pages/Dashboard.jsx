@@ -21,6 +21,7 @@ import {
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { useInventory } from '../context/InventoryContext';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
 const StatCard = ({ title, value, change, positive, icon: Icon, color }) => (
@@ -54,6 +55,7 @@ const StatCard = ({ title, value, change, positive, icon: Icon, color }) => (
 
 const Dashboard = () => {
   const { fertilizers, sales, loading: inventoryLoading } = useInventory();
+  const { isSuperAdmin, isAdmin } = useAuth();
   const [userCount, setUserCount] = useState(0);
   const [recentLogs, setRecentLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(true);
@@ -65,7 +67,16 @@ const Dashboard = () => {
           api.get('/users'),
           api.get('/audit-logs')
         ]);
-        setUserCount(users?.length || 0);
+        
+        const visibleUsers = (users || []).filter(u => {
+          // Hide own account
+          if (u.id === user?.id) return false;
+          // Hide super admins from regular admins
+          if (isAdmin && !isSuperAdmin && u.role === 'SUPER_ADMIN') return false;
+          return true;
+        });
+        
+        setUserCount(visibleUsers.length || 0);
         setRecentLogs((logs || []).slice(0, 5));
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -110,7 +121,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <Helmet>
-        <title>Dashboard | Sri Basaveshwara</title>
+        <title>Dashboard | AgroGrow</title>
       </Helmet>
 
       <div>
@@ -146,7 +157,7 @@ const Dashboard = () => {
         <StatCard 
           title="System Users" 
           value={userCount} 
-          change="+4.0%" 
+          change={`${userCount > 0 ? '+1' : '0'} today`} 
           positive={true} 
           icon={UsersIcon}
           color="emerald"
