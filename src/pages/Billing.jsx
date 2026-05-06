@@ -657,10 +657,10 @@ const Billing = () => {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 border-b border-stone-800">
-                      <div className="p-2 border-r border-stone-800 h-10">
+                      <div className="p-2 border-r border-stone-800 h-15">
                         <p className="text-[9px] font-bold text-stone-500 uppercase">Delivery Note</p>
                       </div>
-                      <div className="p-2 h-10">
+                      <div className="p-2 h-15">
                         <p className="text-[9px] font-bold text-stone-500 uppercase">Mode/Terms of Payment</p>
                         <p className="font-bold">
                           {paymentMethod === 'Cash' ? (
