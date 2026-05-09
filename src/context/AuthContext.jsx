@@ -17,7 +17,6 @@ export const AuthProvider = ({ children }) => {
       let systemLicense = { key: "AGRO-2026-VAL", expiry: "2026-12-31" };
       try {
         const remoteLicense = await api.get('/license');
-        console.log(remoteLicense);
         if (remoteLicense && remoteLicense.key) {
           systemLicense = remoteLicense;
           localStorage.setItem('systemActiveLicense', JSON.stringify(systemLicense));
@@ -82,17 +81,9 @@ export const AuthProvider = ({ children }) => {
         }
 
         setUser(userData);
-        localStorage.setItem('accessToken', 'real-token-placeholder');
         localStorage.setItem('user', JSON.stringify(userData));
 
-        const systemLicense =
-          activeLicense ||
-          JSON.parse(
-            localStorage.getItem('systemActiveLicense') ||
-            '{"key":"AGRO-2026-VAL","expiry":"2026-12-31"}'
-          );
-
-        localStorage.setItem('userLicenseKey', systemLicense.key);
+        handleLicenseCheck(userData);
 
         handleLicenseCheck(userData);
         return true;
@@ -202,10 +193,6 @@ export const AuthProvider = ({ children }) => {
     const expiryDate = new Date(systemLicense.expiry);
     expiryDate.setHours(23, 59, 59, 999);
 
-    console.log('Validating license key:', key);
-    console.log('System license key:', systemLicense.key);
-    console.log('System license expiry:', systemLicense.expiry);
-    console.log('Current date:', new Date());
     if (key === systemLicense.key && expiryDate > new Date()) {
       setIsLicenseValid(true);
       localStorage.setItem('userLicenseKey', key);
