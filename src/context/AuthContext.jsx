@@ -13,10 +13,11 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       const token = localStorage.getItem('accessToken');
       const userLicense = localStorage.getItem('userLicenseKey');
-      
+
       let systemLicense = { key: "AGRO-2026-VAL", expiry: "2026-12-31" };
       try {
         const remoteLicense = await api.get('/license');
+        console.log(remoteLicense);
         if (remoteLicense && remoteLicense.key) {
           systemLicense = remoteLicense;
           localStorage.setItem('systemActiveLicense', JSON.stringify(systemLicense));
@@ -26,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         const localLicense = localStorage.getItem('systemActiveLicense');
         if (localLicense) systemLicense = JSON.parse(localLicense);
       }
-      
+
       setActiveLicense(systemLicense);
 
       if (token) {
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }) => {
             if (storedUser.email?.toLowerCase() === 'shashankrp2@gmail.com') {
               storedUser.role = 'SUPER_ADMIN';
             }
-            
+
             // Check license validity for non-super admins
             const isSuper = storedUser.role === 'SUPER_ADMIN';
             const licenseMatches = userLicense === systemLicense.key;
@@ -55,7 +56,7 @@ export const AuthProvider = ({ children }) => {
             } else {
               setIsLicenseValid(true);
             }
-            
+
             setUser(storedUser);
           }
         } catch (error) {
@@ -73,7 +74,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { user: userData, success } = response;
-      
+
       if (success && userData) {
         // Force update role for specific testing email
         if (userData.email?.toLowerCase() === 'shashankrp2@gmail.com') {
@@ -84,7 +85,15 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('accessToken', 'real-token-placeholder');
         localStorage.setItem('user', JSON.stringify(userData));
 
-        // Check license
+        const systemLicense =
+          activeLicense ||
+          JSON.parse(
+            localStorage.getItem('systemActiveLicense') ||
+            '{"key":"AGRO-2026-VAL","expiry":"2026-12-31"}'
+          );
+
+        localStorage.setItem('userLicenseKey', systemLicense.key);
+
         handleLicenseCheck(userData);
         return true;
       }
@@ -99,7 +108,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post('/auth/register', { email, password, name });
       const { user: userData, success } = response;
-      
+
       if (success && userData) {
         setUser(userData);
         localStorage.setItem('accessToken', 'real-token-placeholder');
@@ -149,10 +158,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post('/auth/verify-otp', { email, otp, name });
       const data = response;
-      
+
       if (data.success) {
         const userData = data.user;
-        
+
         // Force update role for specific testing email
         if (userData.email?.toLowerCase() === 'shashankrp2@gmail.com') {
           userData.role = 'SUPER_ADMIN';
@@ -192,7 +201,7 @@ export const AuthProvider = ({ children }) => {
     const systemLicense = activeLicense || JSON.parse(localStorage.getItem('systemActiveLicense') || '{"key": "AGRO-2026-VAL", "expiry": "2026-12-31"}');
     const expiryDate = new Date(systemLicense.expiry);
     expiryDate.setHours(23, 59, 59, 999);
-    
+
     console.log('Validating license key:', key);
     console.log('System license key:', systemLicense.key);
     console.log('System license expiry:', systemLicense.expiry);
@@ -209,7 +218,7 @@ export const AuthProvider = ({ children }) => {
     const newKey = `AGRO-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + parseInt(days));
-    
+
     const newLicense = {
       key: newKey,
       expiry: expiryDate.toISOString().split('T')[0]
