@@ -193,6 +193,10 @@ export const AuthProvider = ({ children }) => {
     const expiryDate = new Date(systemLicense.expiry);
     expiryDate.setHours(23, 59, 59, 999);
     
+    console.log('Validating license key:', key);
+    console.log('System license key:', systemLicense.key);
+    console.log('System license expiry:', systemLicense.expiry);
+    console.log('Current date:', new Date());
     if (key === systemLicense.key && expiryDate > new Date()) {
       setIsLicenseValid(true);
       localStorage.setItem('userLicenseKey', key);
